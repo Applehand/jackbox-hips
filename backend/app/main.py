@@ -36,6 +36,7 @@ def create_session(request: CreateSessionRequest):
     return CreateSessionResponse(
         session_id=new_session.session_id,
         access_code=new_session.access_code,
+        host_player=host
     )
 
 @app.get("/sessions/{session_id}", response_model=GetSessionDataResponse)
@@ -43,13 +44,13 @@ def get_session_data(session_id: int):
     """Retrieve session data by session ID."""
     session: Session = get_session(session_id)
     
-    current_game_type = session.current_game.game_type if session.current_game else None
+    current_game = session.current_game if session.current_game else None
 
     return GetSessionDataResponse(
         session_id=session.session_id,
         access_code=session.access_code,
-        game_type=current_game_type,
-        players=session.players,
+        current_game=current_game,
+        session_players=session.session_players,
     )
 
 @app.delete("/sessions/{session_id}")
@@ -76,7 +77,7 @@ def start_session_game(session_id: int):
     if not session.game_type:
         raise HTTPException(status_code=400, detail="Game type not set. Please set the game type before starting the game.")
     
-    session.current_game = Game(game_type=session.game_type, players=session.players)
+    session.current_game = Game(game_type=session.game_type, game_players=session.session_players)
     initial_game_state = session.current_game.start_game()
 
     return {
@@ -111,7 +112,7 @@ def get_game_data(session_id: int):
     
     return {
         "game_state": session.current_game.game_state,
-        "player_states": [player.model_dump() for player in session.players],
+        "player_states": [player.model_dump() for player in session.session_players],
     }
 
 @app.post("/sessions/{session_id}/game")
@@ -140,7 +141,7 @@ def create_player(session_id: int, request: CreatePlayerRequest):
     session.player_id_counter += 1
 
     player = Player(name=request.name, role="in_lobby", id=player_id)
-    session.players.append(player)
+    session.session_players.append(player)
 
     return player
 
@@ -149,18 +150,18 @@ def get_players_data(session_id: int):
     """Retrieve all players in a session."""
     session: Session = get_session(session_id)
 
-    return session.players
+    return session.session_players
 
 @app.delete("/sessions/{session_id}/players/{player_id}")
 def remove_player_from_session(session_id: int, player_id: int):
     """Remove a player from a session."""
     session: Session = get_session(session_id)
     
-    player: Player = next((player for player in session.players if player.id == player_id), None)
+    player: Player = next((player for player in session.session_players if player.id == player_id), None)
     if not player:
         raise HTTPException(status_code=404, detail="Player not found.")
     
-    session.players.remove(player)
+    session.session_players.remove(player)
 
     return {"message": f"{player.name} removed from session."}
 
@@ -169,7 +170,7 @@ def handle_player_action(session_id: int, player_id: int, request: PlayerActionR
     """Process an action for a specific player in a session."""
     session: Session = get_session(session_id)
     
-    player: Player = next((player for player in session.players if player.id == player_id), None)
+    player: Player = next((player for player in session.session_players if player.id == player_id), None)
     if not player:
         raise HTTPException(status_code=404, detail="Player not found.")
 

@@ -27,14 +27,14 @@ class Session(BaseModel):
     session_id: int
     access_code: str
     host: Player
-    players: List[Player] = []
+    session_players: List[Player] = []
     player_id_counter: int = 1
     game_type: Optional[GameType] = None
     current_game: Optional['Game'] = None
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.players = [self.host]
+        self.session_players = [self.host]
 
     def to_dict(self):
         """Converts the session data to a dictionary."""
@@ -42,7 +42,7 @@ class Session(BaseModel):
             "session_id": self.session_id,
             "access_code": self.access_code,
             "host": self.host.model_dump(),
-            "players": [player.model_dump() for player in self.players],
+            "players": [player.model_dump() for player in self.session_players],
             "game_type": self.current_game.game_type if self.current_game else None,
             "current_game": self.current_game.model_dump() if self.current_game else None
         }
@@ -55,30 +55,31 @@ class CreateSessionResponse(BaseModel):
     """Response model for creating a new session."""
     session_id: int
     access_code: str
+    host_player: Player
 
 class GetSessionDataResponse(BaseModel):
     """Response model for retrieving session data."""
     session_id: int
     access_code: str
-    game_type: Optional[GameType]
-    players: List[Player]
+    current_game: Optional['Game']
+    session_players: List[Player]
 
 class Game(BaseModel):
     """Represents a game within a session."""
     game_type: GameType
-    players: List[Player]
+    game_players: List[Player]
     game_state: dict = {}
 
     def start_game(self):
         """Starts the game and assigns roles to players."""
-        for player in self.players:
+        for player in self.game_players:
             player.role = "civilian"
         return self.game_state
     
     def end_game(self):
         """Ends the game and resets player roles."""
         self.game_type = None
-        for player in self.players:
+        for player in self.game_players:
             player.role = "in_lobby"
         self.game_state = {}
 
@@ -92,7 +93,7 @@ class Game(BaseModel):
         Returns:
             dict: The updated game state.
         """
-        target_player = next((p for p in self.players if p.id == player.id), None)
+        target_player = next((p for p in self.game_players if p.id == player.id), None)
         
         if not target_player:
             raise ValueError(f"Player with ID {player.id} not found in the session.")
