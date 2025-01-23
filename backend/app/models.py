@@ -27,6 +27,7 @@ class Session(BaseModel):
     session_id: int
     access_code: str
     host: Player
+    host_password: str
     session_players: List[Player] = []
     player_id_counter: int = 1
     game_type: Optional[GameType] = None
@@ -50,6 +51,7 @@ class Session(BaseModel):
 class CreateSessionRequest(BaseModel):
     """Request model for creating a new session."""
     host_name: str
+    host_password: str
 
 class CreateSessionResponse(BaseModel):
     """Response model for creating a new session."""

@@ -10,7 +10,9 @@ var players: Array[Player] = []
 
 @onready var create_lobby_button: Button = $Control/Control/HBoxContainer/CreateLobbyButton
 @onready var end_lobby_button: Button = $Control/Control/HBoxContainer/EndLobbyButton
-@onready var access_code_label: Label = $Control/Control2/Label
+@onready var access_code_label: Label = $Control/Control/HBoxContainer/AccessCodeLabel
+@onready var name_field: LineEdit = $Control/Control/HBoxContainer/NameField
+@onready var password_field: LineEdit = $Control/Control/HBoxContainer/PasswordField
 
 var packed_player_scene: PackedScene = preload("res://Scenes/player.tscn")
 
@@ -24,12 +26,19 @@ func create_lobby_req():
 	if current_session_id:
 		print("Session already created.")
 		return
+	if not name_field.text or not password_field.text:
+		print("Please enter a character name and host password.")
+		return
 	var url = API_BASE_URL + "sessions"
 	lobby_req = HTTPRequest.new()
 	add_child(lobby_req)
 	lobby_req.request_completed.connect(_on_session_created)
 	
-	var body = JSON.stringify({"host_name": "Jake"})
+	var body = JSON.stringify(
+		{"host_name": name_field.text,
+		 "host_password": password_field.text}
+		)
+		
 	var error = lobby_req.request(url, [], HTTPClient.METHOD_POST, body)
 	if error != OK:
 		push_error("An error occurred with the POST request.")

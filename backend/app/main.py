@@ -31,6 +31,7 @@ def create_session(request: CreateSessionRequest):
         session_id=session_id,
         access_code=access_code,
         host=host,
+        host_password=request.host_password
     )
     sessions[session_id] = new_session
     return CreateSessionResponse(
