@@ -1,6 +1,7 @@
 extends Node
 
 const API_BASE_URL = "http://127.0.0.1:8000/"
+var lobby_req = null
 var current_session_id = null
 var access_code = ""
 
@@ -24,12 +25,12 @@ func create_lobby_req():
 		print("Session already created.")
 		return
 	var url = API_BASE_URL + "sessions"
-	var req = HTTPRequest.new()
-	add_child(req)
-	req.request_completed.connect(_on_session_created)
+	lobby_req = HTTPRequest.new()
+	add_child(lobby_req)
+	lobby_req.request_completed.connect(_on_session_created)
 	
 	var body = JSON.stringify({"host_name": "Jake"})
-	var error = req.request(url, [], HTTPClient.METHOD_POST, body)
+	var error = lobby_req.request(url, [], HTTPClient.METHOD_POST, body)
 	if error != OK:
 		push_error("An error occurred with the POST request.")
 
@@ -39,16 +40,17 @@ func end_lobby_req():
 		print("No session exists.")
 		return
 	var url = API_BASE_URL + "sessions/" + str(current_session_id)
-	var req = HTTPRequest.new()
-	add_child(req)
-	req.request_completed.connect(_on_session_deleted)
+	lobby_req = HTTPRequest.new()
+	add_child(lobby_req)
+	lobby_req.request_completed.connect(_on_session_deleted)
 
-	var error = req.request(url, [], HTTPClient.METHOD_DELETE)
+	var error = lobby_req.request(url, [], HTTPClient.METHOD_DELETE)
 	if error != OK:
 		push_error("An error occurred with the DELETE request.")
 
 
 func _on_session_created(result, response_code, headers, body):
+	lobby_req.queue_free()
 	var json = JSON.new()
 	json.parse(body.get_string_from_utf8())
 	var response = json.get_data()
@@ -70,6 +72,7 @@ func _on_session_created(result, response_code, headers, body):
 	
 
 func _on_session_deleted(result, response_code, headers, body):
+	lobby_req.queue_free()
 	var json = JSON.new()
 	json.parse(body.get_string_from_utf8())
 	var response = json.get_data()
