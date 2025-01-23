@@ -71,6 +71,9 @@ func _on_session_created(result, response_code, headers, body):
 	access_code_label.text = access_code
 	
 	var host_player: Player = packed_player_scene.instantiate()
+	var host_role = HostPlayer.new()
+	host_player.add_child(host_role)
+	
 	add_child(host_player)
 	players.append(host_player)
 	

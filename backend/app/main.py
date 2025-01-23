@@ -26,18 +26,17 @@ def create_session(request: CreateSessionRequest):
     """Create a new game session."""
     session_id = len(sessions) + 1
     access_code = generate_access_code()
-    host = Player(name=request.host_name, role="in_lobby", id=0)
+    host_player = HostPlayer(name=request.host_name, role="in_lobby", id=0, host_password=request.host_password)
     new_session = Session(
         session_id=session_id,
         access_code=access_code,
-        host=host,
-        host_password=request.host_password
+        host=host_player,
     )
     sessions[session_id] = new_session
     return CreateSessionResponse(
         session_id=new_session.session_id,
         access_code=new_session.access_code,
-        host_player=host
+        host_player=host_player
     )
 
 @app.get("/sessions/{session_id}", response_model=GetSessionDataResponse)
