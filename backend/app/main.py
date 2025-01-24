@@ -1,19 +1,43 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 import random
 import string
 from app.models import *
 
+origins = [
+    "http://localhost",
+    "http://localhost:5173",
+    "https://itch.io",
+]
+
+
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 sessions = {}
 
 # Utility Functions
 
-def get_session(session_id: int) -> Session:
-    """Retrieve a session by session_id, raise an HTTPException if not found."""
-    session = sessions.get(session_id)
-    if not session:
+def get_session(key: int | str) -> Session:
+    """Retrieve a session by session_id or access_code, raise an HTTPException if not found."""
+    if isinstance(key, int):
+        session = sessions.get(key)
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found.")
+        return session
+    elif isinstance(key, str):
+        for session in sessions.values():
+            if session.access_code == key:
+                return session
         raise HTTPException(status_code=404, detail="Session not found.")
-    return session
+    else:
+        raise HTTPException(status_code=400, detail="Invalid key type. Expected int or str.")
+
 
 def generate_access_code(length: int = 4) -> str:
     """Generate a random access code of the specified length."""
@@ -132,10 +156,10 @@ def update_game_state(session_id: int, update: dict):
 
 # Player Routes
 
-@app.post("/sessions/{session_id}/players", response_model=Player)
-def create_player(session_id: int, request: CreatePlayerRequest):
+@app.post("/sessions/{access_code}/players", response_model=List[Player])
+def create_player(access_code: str, request: CreatePlayerRequest):
     """Create a new player and add to a session."""
-    session: Session = get_session(session_id)
+    session: Session = get_session(access_code)
 
     player_id = session.player_id_counter
     session.player_id_counter += 1
@@ -143,7 +167,7 @@ def create_player(session_id: int, request: CreatePlayerRequest):
     player = Player(name=request.name, role="in_lobby", id=player_id)
     session.session_players.append(player)
 
-    return player
+    return session.session_players
 
 @app.get("/sessions/{session_id}/players", response_model=List[Player])
 def get_players_data(session_id: int):
